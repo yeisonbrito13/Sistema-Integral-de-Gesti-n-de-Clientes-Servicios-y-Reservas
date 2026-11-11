@@ -1,50 +1,58 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
 
-# FUNCIONES PARA GUARDAR EVENTOS Y ERRORES  
 
-def guardar_registro(tipo, mensaje):
-    fecha = datetime.now()
+# REGISTRO DE EVENTOS Y ERRORES
+
+def registrar(tipo, mensaje):
     archivo = open("registro.log", "a", encoding="utf-8")
-    archivo.write(str(fecha) + " - " + tipo + " - " + mensaje + "\n")
+    archivo.write(str(datetime.now()) + " - " + tipo + " - " + mensaje + "\n")
     archivo.close()
 
-# EXCEPCIONES PERSONALIZADAS  
+
+# ERRORES PERSONALIZADOS
 
 class DatoInvalidoError(Exception):
     pass
 
+
 class ReservaError(Exception):
     pass
+
 
 class ServicioNoDisponibleError(Exception):
     pass
 
-# CLASE ABSTRACTA ENTIDAD 
+
+# CLASE ABSTRACTA ENTIDAD
 
 class Entidad(ABC):
+
     def __init__(self, codigo):
         if codigo == "":
-            raise DatoInvalidoError("El codigo no puede estar vacio.")
+            raise DatoInvalidoError("Codigo vacio")
         self.codigo = codigo
+
     @abstractmethod
-    def mostrar_informacion(self):
+    def mostrar(self):
         pass
-
-
-#CLASE CLIENTE 
+        
+# CLASE CLIENTE 
 
 class Cliente(Entidad):
+
     def __init__(self, codigo, nombre, correo, telefono):
         super().__init__(codigo)
-        if nombre == "":
-            raise DatoInvalidoError("El nombre es obligatorio.")
-        if "@" not in correo:
-            raise DatoInvalidoError("El correo no es valido.")
-        if len(telefono) < 7:
-            raise DatoInvalidoError("El telefono debe tener minimo 7 digitos.")
 
-  # DATOS PRIVADOS  (encapsulación)
+        if nombre == "":
+            raise DatoInvalidoError("Nombre obligatorio")
+
+        if "@" not in correo:
+            raise DatoInvalidoError("Correo incorrecto")
+
+        if len(telefono) < 7:
+            raise DatoInvalidoError("Telefono incorrecto")
+
         self.__nombre = nombre
         self.__correo = correo
         self.__telefono = telefono
@@ -52,14 +60,10 @@ class Cliente(Entidad):
     def obtener_nombre(self):
         return self.__nombre
 
-    def obtener_correo(self):
-        return self.__correo
+    def mostrar(self):
+        print(self.codigo, self.__nombre, self.__correo)
+        
 
-    def mostrar_informacion(self):
-
-        print("Codigo:", self.codigo)
-        print("Nombre:", self.__nombre)
-        print("Correo:", self.__correo)
-        print("Telefono:", self.__telefono)
+    
 
 
