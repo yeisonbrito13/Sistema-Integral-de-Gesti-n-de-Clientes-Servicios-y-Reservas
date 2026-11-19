@@ -9,7 +9,7 @@ def pesos(valor):
     return "$" + f"{valor:,.0f}".replace(",", ".")
 
 
-# GUARDAR EVENTOS Y ERRORES
+# REGISTRAR EVENTOS Y ERRORES
 
 def registrar(tipo, mensaje):
     with open("registro.log", "a", encoding="utf-8") as archivo:
@@ -85,7 +85,6 @@ def registrar_cliente(codigo):
 
         if nombre == "":
             print("ERROR: Nombre obligatorio")
-            registrar("ERROR", "Nombre vacio")
         else:
             break
 
@@ -94,7 +93,6 @@ def registrar_cliente(codigo):
 
         if "@" not in correo or "." not in correo:
             print("ERROR: Correo incorrecto")
-            registrar("ERROR", "Correo incorrecto")
         else:
             break
 
@@ -103,7 +101,6 @@ def registrar_cliente(codigo):
 
         if not celular.isdigit() or len(celular) != 10:
             print("ERROR: El celular debe tener 10 digitos")
-            registrar("ERROR", "Celular incorrecto")
         else:
             break
 
@@ -122,9 +119,6 @@ class Servicio(Entidad):
     def __init__(self, codigo, nombre, precio, disponible=True):
         super().__init__(codigo)
 
-        if nombre.strip() == "":
-            raise DatoInvalidoError("Nombre de servicio obligatorio")
-
         if precio <= 0:
             raise DatoInvalidoError("Precio incorrecto")
 
@@ -136,7 +130,7 @@ class Servicio(Entidad):
         print(self.codigo, "-", self.nombre)
         print("Precio por hora:", pesos(self.precio))
 
-    # PARAMETROS OPCIONALES PARA CALCULAR COSTOS
+    # CALCULO DE COSTOS CON PARAMETROS OPCIONALES
 
     def calcular_total(self, horas, impuesto=0, descuento=0):
 
@@ -150,8 +144,17 @@ class Servicio(Entidad):
             raise DatoInvalidoError("Descuento incorrecto")
 
         subtotal = self.precio * horas
-        valor_impuesto = subtotal * impuesto / 100
-        valor_descuento = subtotal * descuento / 100
+
+        # DESCUENTO POR VOLUMEN: 5% DESDE 5 HORAS
+
+        descuento_por_volumen = 5 if horas >= 5 else 0
+
+        descuento_total = min(
+            100, descuento + descuento_por_volumen
+        )
+
+        valor_impuesto = subtotal * (impuesto / 100)
+        valor_descuento = subtotal * (descuento_total / 100)
 
         total = subtotal + valor_impuesto - valor_descuento
 
@@ -168,10 +171,17 @@ class Servicio(Entidad):
 
 # SERVICIO DE SALAS
 
-class ServicioSala(Servicio):
+class ReservaSalas(Servicio):
 
     def calcular_costo(self, horas, impuesto=0, descuento=0):
-        return self.calcular_total(horas, impuesto, descuento)
+
+        # DESCUENTO ESPECIAL DEL 2% PARA SALAS
+
+        descuento_especial = min(100, descuento + 2)
+
+        return self.calcular_total(
+            horas, impuesto, descuento_especial
+        )
 
     def describir(self):
         return "Reserva de salas"
@@ -179,9 +189,10 @@ class ServicioSala(Servicio):
 
 # SERVICIO DE EQUIPOS
 
-class ServicioEquipo(Servicio):
+class AlquilerEquipos(Servicio):
 
     def calcular_costo(self, horas, impuesto=0, descuento=0):
+
         return self.calcular_total(horas, impuesto, descuento)
 
     def describir(self):
@@ -193,6 +204,7 @@ class ServicioEquipo(Servicio):
 class ServicioAsesoria(Servicio):
 
     def calcular_costo(self, horas, impuesto=0, descuento=0):
+
         return self.calcular_total(horas, impuesto, descuento)
 
     def describir(self):
@@ -251,6 +263,7 @@ class Reserva:
 
         try:
             self.confirmar()
+
             print("\nReserva confirmada")
             print("Total a pagar:", pesos(self.total))
 
@@ -262,17 +275,18 @@ class Reserva:
             registrar("EVENTO", "Procesamiento de " + self.codigo)
 
     def mostrar(self):
+
         print("Reserva:", self.codigo)
         print("Cliente:", self.cliente.obtener_nombre())
         print("Servicio:", self.servicio.nombre)
         print("Horas:", self.horas)
         print("Impuesto:", str(self.impuesto) + "%")
-        print("Descuento:", str(self.descuento) + "%")
+        print("Descuento seleccionado:", str(self.descuento) + "%")
         print("Estado:", self.estado)
         print("Total:", pesos(self.total))
 
 
-# MENU DE SERVICIOS
+# MENU PARA ELEGIR SERVICIO
 
 def elegir_servicio(servicios):
 
@@ -305,7 +319,6 @@ def elegir_servicio(servicios):
 
         else:
             print("ERROR: Seleccione una opcion del 1 al 4")
-            registrar("ERROR", "Opcion incorrecta")
 
 
 # PEDIR HORAS
@@ -318,28 +331,26 @@ def pedir_horas():
             horas = int(input("Cuantas horas necesita?: "))
 
             if horas <= 0:
-                raise DatoInvalidoError("Las horas deben ser mayores a cero")
+                raise DatoInvalidoError("Horas incorrectas")
 
         except ValueError:
             print("ERROR: Ingrese un numero entero")
-            registrar("ERROR", "Horas no numericas")
 
         except DatoInvalidoError as error:
             print("ERROR:", error)
-            registrar("ERROR", str(error))
 
         else:
             return horas
 
 
-# MENU PARA CALCULAR COSTOS
+# MENU DE CALCULO DE COSTOS
 
 def elegir_calculo(servicio, horas):
 
     while True:
 
         print("\n========== CALCULO DEL SERVICIO ==========")
-        print("1. Costo normal")
+        print("1. Costo normal (sin impuesto ni descuento seleccionado)")
         print("2. Costo con impuesto del 19%")
         print("3. Costo con impuesto del 19% y descuento del 10%")
         print("4. Cancelar seleccion del calculo")
@@ -347,54 +358,78 @@ def elegir_calculo(servicio, horas):
         opcion = input("Seleccione una opcion (1-4): ").strip()
 
         if opcion == "1":
+
             impuesto = 0
             descuento = 0
+
             total = servicio.calcular_costo(horas)
+
             break
 
         elif opcion == "2":
+
             impuesto = 19
             descuento = 0
+
             total = servicio.calcular_costo(horas, impuesto)
+
             break
 
         elif opcion == "3":
+
             impuesto = 19
             descuento = 10
+
             total = servicio.calcular_costo(
                 horas, impuesto, descuento
             )
+
             break
 
         elif opcion == "4":
+
             print("Calculo cancelado")
             registrar("EVENTO", "Calculo cancelado")
+
             return None
 
         else:
-            print("ERROR: Opcion incorrecta")
-            registrar("ERROR", "Opcion de calculo incorrecta")
+            print("ERROR: Seleccione una opcion valida")
 
-    print("\nSubtotal:", pesos(servicio.precio * horas))
+    # MOSTRAR DESCUENTOS APLICADOS
+
+    descuento_especial = 2 if isinstance(servicio, ReservaSalas) else 0
+    descuento_volumen = 5 if horas >= 5 else 0
+
+    descuento_total = min(
+        100, descuento + descuento_especial + descuento_volumen
+    )
+
+    print("\n========== RESULTADO DEL CALCULO ==========")
+
+    print("Subtotal:", pesos(servicio.precio * horas))
     print("Impuesto:", str(impuesto) + "%")
-    print("Descuento:", str(descuento) + "%")
-    print("TOTAL:", pesos(total))
+    print("Descuento seleccionado:", str(descuento) + "%")
+    print("Descuento especial de sala:", str(descuento_especial) + "%")
+    print("Descuento por volumen:", str(descuento_volumen) + "%")
+    print("Descuento total aplicado:", str(descuento_total) + "%")
+    print("TOTAL A PAGAR:", pesos(total))
 
     return impuesto, descuento, total
 
 
-# PEDIR CONFIRMACION
+# CONFIRMAR RESERVA
 
 def pedir_confirmacion(mensaje):
 
     while True:
+
         respuesta = input(mensaje).strip().upper()
 
         if respuesta == "S" or respuesta == "N":
             return respuesta
 
         print("ERROR: Responda S o N")
-        registrar("ERROR", "Respuesta incorrecta")
 
 
 # PROGRAMA PRINCIPAL
@@ -416,13 +451,16 @@ cliente1 = registrar_cliente("C01")
 clientes.append(cliente1)
 
 
-# OPERACION 2: CLIENTE INCORRECTO
+# OPERACION 2: PROBAR CLIENTE INCORRECTO
 
-print("\nOPERACION 2: VALIDAR CLIENTE INCORRECTO")
+print("\nOPERACION 2: CLIENTE INCORRECTO")
 
 try:
-    malo = Cliente("C02", "Pedro", "pedrogmail.com", "3001234567")
-    clientes.append(malo)
+    cliente_malo = Cliente(
+        "C02", "Pedro", "pedrogmail.com", "3001234567"
+    )
+
+    clientes.append(cliente_malo)
 
 except Exception as error:
     print("Error controlado:", error)
@@ -431,15 +469,16 @@ except Exception as error:
 
 # OPERACION 3: OTRO CLIENTE
 
-print("\nOPERACION 3: REGISTRAR OTRO CLIENTE")
+print("\nOPERACION 3: OTRO CLIENTE")
 
 try:
     cliente2 = Cliente(
         "C03", "Andres", "andres@gmail.com", "3107654321"
     )
+
     clientes.append(cliente2)
+
     print("Cliente Andres registrado")
-    registrar("EVENTO", "Cliente Andres registrado")
 
 except Exception as error:
     print("Error:", error)
@@ -448,31 +487,27 @@ except Exception as error:
 
 # OPERACIONES 4, 5 Y 6: CREAR SERVICIOS
 
-print("\nOPERACIONES 4, 5 Y 6: CREAR SERVICIOS")
+print("\nCREANDO SERVICIOS")
 
-servicios_nuevos = [
-    ServicioSala("S01", "Reserva de sala", 50000),
-    ServicioEquipo("S02", "Alquiler de equipo", 30000),
-    ServicioAsesoria("S03", "Asesoria especializada", 80000)
-]
+sala = ReservaSalas("S01", "Reserva de sala", 50000)
+equipo = AlquilerEquipos("S02", "Alquiler de equipo", 30000)
+asesoria = ServicioAsesoria("S03", "Asesoria especializada", 80000)
 
-for servicio in servicios_nuevos:
-    try:
-        servicios.append(servicio)
-        print("Servicio creado:", servicio.nombre)
-        registrar("EVENTO", "Servicio creado: " + servicio.nombre)
+servicios.append(sala)
+servicios.append(equipo)
+servicios.append(asesoria)
 
-    except Exception as error:
-        print("Error:", error)
-        registrar("ERROR", str(error))
+for servicio in servicios:
+    print("Servicio creado:", servicio.nombre)
+    registrar("EVENTO", "Servicio creado: " + servicio.nombre)
 
 
 # OPERACION 7: PRECIO INCORRECTO
 
-print("\nOPERACION 7: VALIDAR PRECIO INCORRECTO")
+print("\nOPERACION 7: PRECIO INCORRECTO")
 
 try:
-    malo = ServicioSala("S04", "Sala", -20000)
+    malo = ReservaSalas("S04", "Sala", -20000)
     servicios.append(malo)
 
 except Exception as error:
@@ -480,7 +515,7 @@ except Exception as error:
     registrar("ERROR", str(error))
 
 
-# OPERACION 8: RESERVA DEL USUARIO
+# OPERACION 8: RESERVA DEL CLIENTE
 
 print("\nOPERACION 8: REALIZAR RESERVA")
 
@@ -498,29 +533,32 @@ if servicio_elegido is not None:
 
         impuesto, descuento, total = calculo
 
-        print("\n========== RESUMEN DEL SERVICIO ==========")
+        print("\n========== RESUMEN DE RESERVA ==========")
         print("Cliente:", cliente1.obtener_nombre())
         print("Servicio:", servicio_elegido.nombre)
-        print("Precio por hora:", pesos(servicio_elegido.precio))
         print("Horas:", horas)
-        print("Total a pagar:", pesos(total))
+        print("Total:", pesos(total))
 
         respuesta = pedir_confirmacion(
             "\nDesea confirmar la reserva? (S/N): "
         )
 
         try:
+
             reserva1 = Reserva(
                 "R01", cliente1, servicio_elegido,
                 horas, impuesto, descuento
             )
+
             reservas.append(reserva1)
 
             if respuesta == "S":
+
                 reserva1.procesar()
                 registrar("EVENTO", "Reserva confirmada")
 
             else:
+
                 reserva1.cancelar()
                 print("Reserva cancelada")
                 registrar("EVENTO", "Reserva cancelada")
@@ -529,7 +567,7 @@ if servicio_elegido is not None:
             print("Error:", error)
             registrar("ERROR", str(error))
 
-        # CANCELAR UNA RESERVA CONFIRMADA
+        # OPCION PARA CANCELAR RESERVA CONFIRMADA
 
         if reserva1 is not None and reserva1.estado == "Confirmada":
 
@@ -538,6 +576,7 @@ if servicio_elegido is not None:
             print("2. Cancelar reserva")
 
             while True:
+
                 opcion = input("Seleccione una opcion (1-2): ").strip()
 
                 if opcion == "1":
@@ -545,21 +584,25 @@ if servicio_elegido is not None:
                     break
 
                 elif opcion == "2":
+
                     try:
                         reserva1.cancelar()
+
                         print("Reserva cancelada correctamente")
+
                         registrar("EVENTO", "Reserva cancelada")
+
                     except Exception as error:
                         print("Error:", error)
                         registrar("ERROR", str(error))
+
                     break
 
                 else:
                     print("ERROR: Seleccione 1 o 2")
-                    registrar("ERROR", "Opcion incorrecta")
 
     else:
-        print("No se realizo ninguna reserva")
+        print("No se realizo la reserva")
 
 else:
     print("No se selecciono ningun servicio")
@@ -567,15 +610,18 @@ else:
 
 # OPERACION 9: SERVICIO NO DISPONIBLE
 
-print("\nOPERACION 9: PROBAR SERVICIO OCUPADO")
+print("\nOPERACION 9: SERVICIO OCUPADO")
 
 try:
-    ocupado = ServicioEquipo(
+
+    ocupado = AlquilerEquipos(
         "S05", "Proyector ocupado", 30000, False
     )
 
     reserva2 = Reserva("R02", cliente2, ocupado, 2)
+
     reservas.append(reserva2)
+
     reserva2.procesar()
 
 except Exception as error:
@@ -585,11 +631,14 @@ except Exception as error:
 
 # OPERACION 10: CANCELAR RESERVA DE PRUEBA
 
-print("\nOPERACION 10: CANCELAR RESERVA DE PRUEBA")
+print("\nOPERACION 10: CANCELAR RESERVA")
 
 try:
+
     reserva2.cancelar()
+
     print("Reserva de prueba cancelada")
+
     registrar("EVENTO", "Reserva R02 cancelada")
 
 except Exception as error:
@@ -602,6 +651,7 @@ except Exception as error:
 print("\nOPERACION 11: CANCELAR DOS VECES")
 
 try:
+
     reserva2.cancelar()
 
 except Exception as error:
@@ -609,22 +659,23 @@ except Exception as error:
     registrar("ERROR", str(error))
 
 
-# OPERACION 12: DEMOSTRAR PARAMETROS OPCIONALES
+# OPERACION 12: DEMOSTRAR DIFERENTES CALCULOS
 
-print("\nOPERACION 12: DIFERENTES CALCULOS DE COSTO")
+print("\nOPERACION 12: DIFERENTES CALCULOS DE COSTOS")
 
 try:
-    sala = servicios[0]
 
-    normal = sala.calcular_costo(2)
-    con_impuesto = sala.calcular_costo(2, 19)
-    con_descuento = sala.calcular_costo(2, 19, 10)
+    costo_normal = sala.calcular_costo(2)
 
-    print("Costo normal:", pesos(normal))
-    print("Costo con impuesto:", pesos(con_impuesto))
-    print("Costo con impuesto y descuento:", pesos(con_descuento))
+    costo_impuesto = sala.calcular_costo(2, 19)
 
-    registrar("EVENTO", "Tres variantes del calculo ejecutadas")
+    costo_descuento = sala.calcular_costo(2, 19, 10)
+
+    print("Costo normal:", pesos(costo_normal))
+    print("Costo con impuesto:", pesos(costo_impuesto))
+    print("Costo con impuesto y descuento:", pesos(costo_descuento))
+
+    registrar("EVENTO", "Diferentes calculos de costos realizados")
 
 except Exception as error:
     print("Error:", error)
@@ -663,6 +714,3 @@ for reserva in reservas:
 
 
 print("\nPROGRAMA FINALIZADO")
-
-
-
