@@ -36,3 +36,32 @@ class AlquilerEquipos(Servicio):
 
     def describir(self):
         return "Alquiler de equipos"
+
+#===============================================================================================================
+
+# menu de descuentos 
+print("\n========== CALCULO DEL SERVICIO ==========")
+    print("1. Costo normal (Sin impuestos ni descuentos)")
+    print("2. Costo con impuesto del 19%")
+    print("3. Costo con impuesto del 19% y descuento del 10%") # <-- Opción de descuento
+    print("4. Cancelar selección del calculo")
+
+    opcion = input("Seleccione una opcion (1-4): ").strip()
+
+    if opcion == "1":
+        impuesto = 0
+        descuento = 0
+        total = servicio.calcular_costo(horas)
+        break
+
+    elif opcion == "2":
+        impuesto = 19
+        descuento = 0
+        total = servicio.calcular_costo(horas, impuesto)
+        break
+
+    elif opcion == "3":
+        impuesto = 19
+        descuento = 10  # <--- Asignación del descuento seleccionado
+        total = servicio.calcular_costo(horas, impuesto, descuento)
+        break
